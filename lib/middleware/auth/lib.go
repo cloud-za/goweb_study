@@ -4,16 +4,23 @@ import (
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
-
 	"golang.org/x/crypto/bcrypt"
 )
 
-var secretkey []byte
-var expireTime int = 7 * 24 * 60 * 60
+type JWT struct {
+	Secretkey  []byte
+	ExpireTime time.Duration
+}
 
-func Setup(key []byte, ex int) {
-	secretkey = key
-	expireTime = ex
+func NewJWT(key string, expiretime time.Duration) *JWT {
+	return &JWT{
+		Secretkey:  []byte(key),
+		ExpireTime: expiretime,
+	}
+}
+
+type Token_T struct {
+	UID string `json:"userid"`
 }
 
 func hash(password string) (string, error) {
