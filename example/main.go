@@ -45,28 +45,6 @@ func AuthMiddleWare() gin.HandlerFunc {
 		return
 	}
 }
-func socketHandler(c *gin.Context) {
-	//create socketIO server as well
-	soIO, err := socketio.NewServer(nil)
-	if err != nil {
-		panic(err)
-	}
-	soIO.On("connection", func(so socketio.Socket) {
-		fmt.Println("on connection")
-		so.Join("chat")
-		so.On("chat message", func(msg string) {
-			fmt.Println("emit:", so.Emit("chat message", msg))
-			so.BroadcastTo("chat", "chat message", msg)
-		})
-		so.On("disconnection", func() {
-			fmt.Println("on disconnect")
-		})
-	})
-	soIO.On("error", func(so socketio.Socket, err error) {
-		fmt.Printf("[ WebSocket ] Error : %v", err.Error())
-	})
-	soIO.ServeHTTP(c.Writer, c.Request)
-}
 
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -317,10 +295,27 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"data": "home"})
 		})
 
-		app.GET("/socket.io", socketHandler)
-		app.POST("/socket.io", socketHandler)
-		app.Handle("WS", "/socket.io", socketHandler)
-		app.Handle("WSS", "/socket.io", socketHandler)
+		soIO, err := socketio.NewServer(nil)
+		if err != nil {
+			panic(err)
+		}
+		soIO.On("connection", func(so socketio.Socket) {
+			fmt.Println("on connection")
+			so.Join("chat")
+			so.On("chat message", func(msg string) {
+				fmt.Println("emit:", so.Emit("chat message", msg))
+				so.BroadcastTo("chat", "chat message", msg)
+			})
+
+			so.On("disconnection", func() {
+				fmt.Println("on disconnect")
+			})
+		})
+		soIO.On("error", func(so socketio.Socket, err error) {
+			fmt.Printf("[ WebSocket ] Error : %v", err.Error())
+		})
+
+		app.GET("/socket.io/", gin.WrapH(soIO))
 
 		app.RunTLS(":8000", "./config/cert/webhook.cert", "./config/cert/webhook.key")
 	}()
