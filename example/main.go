@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/99designs/gqlgen/handler"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 
@@ -14,6 +15,7 @@ import (
 
 	"github.com/googollee/go-socket.io"
 	"github.com/zartbot/goflow/lib/metricbeat"
+	"github.com/zartbot/goweb/example/graphql"
 
 	"net/http"
 	_ "net/http/pprof"
@@ -76,6 +78,7 @@ func main() {
 
 	go func() {
 		app := gin.Default()
+		app.StaticFS("/static", http.Dir("static"))
 
 		//basic usage
 		//ref: https://www.jianshu.com/p/a31e4ee25305/
@@ -85,7 +88,6 @@ func main() {
 			context.SetCookie("name", "hahhaha", 60*60*24, "/", "", true, true)
 			context.String(200, "Cookie:%s", val)
 		})
-		app.StaticFS("/static", http.Dir("static"))
 
 		app.GET("/user/:name", func(c *gin.Context) {
 			name := c.Param("name")
@@ -316,6 +318,12 @@ func main() {
 		})
 
 		app.GET("/socket.io/", gin.WrapH(soIO))
+
+		app.GET("/graphiql", gin.WrapH(handler.Playground("GraphQL playground", "/query")))
+		gql := gin.WrapH(handler.GraphQL(graphql.NewExecutableSchema(graphql.Config{Resolvers: &graphql.Resolver{}})))
+
+		app.GET("/query", gql)
+		app.POST("/query", gql)
 
 		app.RunTLS(":8000", "./config/cert/webhook.cert", "./config/cert/webhook.key")
 	}()
