@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/99designs/gqlgen/handler"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 
@@ -15,7 +16,8 @@ import (
 
 	"github.com/googollee/go-socket.io"
 	"github.com/zartbot/goflow/lib/metricbeat"
-	"github.com/zartbot/goweb/example/graphql"
+	"github.com/zartbot/goweb/middleware/sess"
+	"github.com/zartbot/goweb_study/example/graphql"
 
 	"net/http"
 	_ "net/http/pprof"
@@ -79,6 +81,34 @@ func main() {
 	go func() {
 		app := gin.Default()
 		app.StaticFS("/static", http.Dir("static"))
+
+		app.Use(sess.New("secretkey", "sess", 86400*7))
+
+		app.GET("/inits", func(c *gin.Context) {
+			session := sessions.Default(c)
+			var count int
+			v := session.Get("count")
+			if v == nil {
+				count = 0
+			} else {
+				count = v.(int)
+				count++
+			}
+			session.Set("count", count)
+			session.Set("username", "kevin")
+			session.Set("displayname", "wahaha")
+			session.Set("uid", "14454564656468")
+			session.Set("locale", "zh-cn")
+			session.Set("privilege", int16(7))
+			session.Save()
+			c.JSON(200, gin.H{"count": count})
+		})
+
+		app.GET("/session", sess.ValidateSession(4), func(c *gin.Context) {
+			session := sessions.Default(c)
+			v := session.Get("username")
+			c.JSON(200, gin.H{"username": v})
+		})
 
 		//basic usage
 		//ref: https://www.jianshu.com/p/a31e4ee25305/
